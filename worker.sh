@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd /home/admin/openclaw/workspace/kf1688
-pkill -f '/home/admin/openclaw/workspace/kf1688/daemon.js' 2>/dev/null || true
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+pkill -f "$(basename "$SCRIPT_DIR")/daemon.js" 2>/dev/null || true
 rm -f daemon.lock
 python3 - <<'PY'
 import json

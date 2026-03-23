@@ -87,6 +87,7 @@ kf1688 daemon start
 - 服务器上必须有真实 Chrome
 - 必须存在 1688 登录态
 - 推荐通过 OpenClaw Browser Relay / Chrome Relay 方式接管已登录标签页
+- 需要通过 `KF1688_SHOP_NAMES` 配置店铺自身标识，避免把店铺名误识别成客户
 - 如果没有真实登录态，容易遇到 1688 风控、验证码或跳转异常
 
 ---
@@ -98,7 +99,7 @@ cd /path/to/openclaw-1688-daemon
 npm install
 ```
 
-说明：当前代码直接复用 OpenClaw 环境中的 `playwright-core`，通常不需要额外安装完整 Playwright 浏览器。
+说明：程序会优先使用普通 `require('playwright-core')`。如果目标服务器上的 Node/依赖路径特殊，可通过 `KF1688_PLAYWRIGHT_CORE_PATH` 或 `PLAYWRIGHT_CORE_PATH` 指定 fallback 路径。
 
 ---
 
@@ -131,8 +132,12 @@ npm start
 
 ## 环境变量
 
-可选环境变量：
+可选/建议环境变量：
 
+- `KF1688_OPENCLAW_CONFIG_PATH`：OpenClaw 配置文件路径
+- `OPENCLAW_CONFIG_PATH`：OpenClaw 配置文件路径（通用别名）
+- `KF1688_PLAYWRIGHT_CORE_PATH`：`playwright-core` fallback 路径
+- `PLAYWRIGHT_CORE_PATH`：`playwright-core` fallback 路径（通用别名）
 - `KF1688_RELAY_URL`
 - `KF1688_RELAY_PORT`
 - `KF1688_GATEWAY_URL`
@@ -140,9 +145,10 @@ npm start
 - `KF1688_AGENT_ID`
 - `KF1688_POLL_MS`
 - `KF1688_MAX_CONTEXT_MESSAGES`
-- `KF1688_NOTIFY_TARGET`
+- `KF1688_SHOP_NAMES`：店铺名，支持逗号分隔或 JSON 数组字符串
+- `KF1688_NOTIFY_TARGET`：飞书通知目标；不配置则跳过通知
 
-如果不传，会使用程序内默认值。
+项目根目录已提供 `.env.example` 作为参考。
 
 ---
 
@@ -259,7 +265,7 @@ https://github.com/DaimaoHandle/openclaw-1688-daemon
 要求：
 
 1. 把仓库 clone 到工作目录，例如：
-   /home/admin/openclaw/workspace/openclaw-1688-daemon
+   /path/to/openclaw/workspace/openclaw-1688-daemon
 
 2. 进入项目目录后检查文件：
    - daemon.js

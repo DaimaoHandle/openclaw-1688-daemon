@@ -1,14 +1,32 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { chromium } = require('/home/admin/.nvm/versions/node/v24.14.0/lib/node_modules/openclaw/node_modules/playwright-core');
+const os = require('os');
 
+function loadPlaywrightChromium() {
+  try {
+    return require('playwright-core').chromium;
+  } catch (err) {
+    const fallback = process.env.PLAYWRIGHT_CORE_PATH || process.env.KF1688_PLAYWRIGHT_CORE_PATH;
+    if (fallback) {
+      return require(fallback).chromium;
+    }
+    throw new Error('playwright-core not found. Install it normally or set PLAYWRIGHT_CORE_PATH / KF1688_PLAYWRIGHT_CORE_PATH.');
+  }
+}
+
+const chromium = loadPlaywrightChromium();
 const ROOT = __dirname;
 const KB_PATH = path.join(ROOT, 'kb.json');
 const STATE_PATH = path.join(ROOT, 'state.json');
 const LOG_PATH = path.join(ROOT, 'daemon.log');
 const LOCK_PATH = path.join(ROOT, 'daemon.lock');
-const OPENCLAW_CONFIG = '/home/admin/.openclaw/openclaw.json';
+const DEFAULT_OPENCLAW_CONFIG_CANDIDATES = [
+  process.env.KF1688_OPENCLAW_CONFIG_PATH,
+  process.env.OPENCLAW_CONFIG_PATH,
+  path.join(os.homedir(), '.openclaw', 'openclaw.json'),
+  path.join(os.homedir(), '.config', 'openclaw', 'openclaw.json')
+].filter(Boolean);
 const RELAY_URL = process.env.KF1688_RELAY_URL || 'ws://127.0.0.1:18792/cdp';
 const RELAY_PORT = Number(process.env.KF1688_RELAY_PORT || 18792);
 const GATEWAY_URL = process.env.KF1688_GATEWAY_URL || 'http://127.0.0.1:18789/v1/chat/completions';
@@ -16,9 +34,27 @@ const TOOLS_INVOKE_URL = process.env.KF1688_TOOLS_INVOKE_URL || 'http://127.0.0.
 const AGENT_ID = process.env.KF1688_AGENT_ID || 'main';
 const POLL_MS = Number(process.env.KF1688_POLL_MS || 15000);
 const MAX_CONTEXT_MESSAGES = Number(process.env.KF1688_MAX_CONTEXT_MESSAGES || 6);
-const HUMAN_NOTIFY_TARGET = process.env.KF1688_NOTIFY_TARGET || 'user:ou_530307aabbf541dddaf607f17ad08c6c';
-const SHOP_NAMES = new Set(['极有光世界百货']);
+const HUMAN_NOTIFY_TARGET = (process.env.KF1688_NOTIFY_TARGET || '').trim();
+const SHOP_NAMES = new Set(parseConfiguredShopNames());
 const NAV_TEXT_RE = /首页|我的阿里|我的订单|采购车|消息|官方服务|下载插件|去安装|找货源|搜\s*索|以图搜款/;
+
+
+function parseConfiguredShopNames() {
+  const raw = (process.env.KF1688_SHOP_NAMES || process.env.KF1688_SHOP_NAME || '').trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map(x => String(x).trim()).filter(Boolean);
+  } catch {}
+  return raw.split(',').map(x => x.trim()).filter(Boolean);
+}
+
+function resolveOpenClawConfigPath() {
+  for (const candidate of DEFAULT_OPENCLAW_CONFIG_CANDIDATES) {
+    if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error(`openclaw config not found. Set KF1688_OPENCLAW_CONFIG_PATH or OPENCLAW_CONFIG_PATH. Tried: ${DEFAULT_OPENCLAW_CONFIG_CANDIDATES.join(', ')}`);
+}
 
 function log(...args) {
   const line = `[${new Date().toISOString()}] ${args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ')}`;
@@ -51,7 +87,7 @@ function saveJson(file, value) {
 }
 
 function getGatewayToken() {
-  const raw = fs.readFileSync(OPENCLAW_CONFIG, 'utf8');
+  const raw = fs.readFileSync(resolveOpenClawConfigPath(), 'utf8');
   const m = raw.match(/"token"\s*:\s*"([^"]+)"/);
   if (!m) throw new Error('gateway token not found in openclaw.json');
   return m[1];
@@ -498,6 +534,10 @@ async function notifyHuman(gatewayToken, payload) {
     `客户原话：${payload.customerQuestion || ''}`,
     `商品标题：${payload.productTitle || '未识别到'}`
   ].join('\n');
+  if (!HUMAN_NOTIFY_TARGET) {
+    log('notify_human skipped: KF1688_NOTIFY_TARGET not configured', { customerName: payload.customerName || '', customerQuestion: payload.customerQuestion || '' });
+    return false;
+  }
   const res = await invokeTool(gatewayToken, 'message', 'send', {
     channel: 'feishu',
     target: HUMAN_NOTIFY_TARGET,
