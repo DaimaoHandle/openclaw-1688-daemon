@@ -273,37 +273,64 @@ https://github.com/DaimaoHandle/openclaw-1688-daemon
    - package.json
    - README.md
    - worker.sh
+   - .env.example
 
 3. 安装依赖：
    npm install
 
-4. 检查运行环境是否满足：
+4. 按以下原则准备环境变量：
+   - 能自动获取的尽量自动获取，不要为了配置而修改源码
+   - OpenClaw 配置路径：优先尝试自动从当前用户目录解析
+     - ~/.openclaw/openclaw.json
+     - ~/.config/openclaw/openclaw.json
+     - 如果都不存在，再设置：
+       KF1688_OPENCLAW_CONFIG_PATH=/actual/path/to/openclaw.json
+   - playwright-core：优先直接 require('playwright-core')
+     - 如果当前环境无法正常 require，再设置：
+       KF1688_PLAYWRIGHT_CORE_PATH=/actual/path/to/playwright-core
+   - relay / gateway / tools 地址：如果当前服务器上的 OpenClaw 使用默认端口，可先不设置；如果不是默认值，再设置：
+       KF1688_RELAY_URL
+       KF1688_RELAY_PORT
+       KF1688_GATEWAY_URL
+       KF1688_TOOLS_INVOKE_URL
+   - 店铺名（重要，属于个性化信息，无法自动安全推断）：必须要求用户提供，再设置：
+       KF1688_SHOP_NAMES=店铺名1,店铺名2
+     或 JSON 数组格式：
+       KF1688_SHOP_NAMES=["店铺名1","店铺名2"]
+   - 飞书通知目标（属于个性化信息）：如果用户明确需要人工通知，再让用户提供并设置：
+       KF1688_NOTIFY_TARGET=...
+     如果不需要人工通知，可以留空，不要猜测或沿用旧值
+
+5. 如需落地配置，请在项目目录创建 `.env`（可参考 `.env.example`），或在启动命令前 export 对应环境变量。
+
+6. 检查运行环境是否满足：
    - OpenClaw Gateway 正常运行
    - 服务器已安装 Google Chrome / Chromium
    - 存在真实可用的 1688 登录态
    - 已配置 OpenClaw 可接管真实浏览器环境（如 Browser Relay / Chrome Relay）
 
-5. 启动守护进程：
+7. 启动守护进程：
    node daemon.js
 
-6. 启动后检查：
+8. 启动后检查：
    - 是否生成 daemon.lock
    - 是否生成 daemon.log
    - 日志中是否出现 `kf1688 daemon start`
    - 是否能扫描 1688 未读会话
 
-7. 不要提交或覆盖这些运行态文件：
+9. 不要提交或覆盖这些运行态文件：
    - state.json
    - daemon.lock
    - daemon.log
    - daemon.log.*
 
-8. 如果需要长期运行，请按该服务器习惯配置守护方式（systemd / pm2 / supervisor），但不要修改核心业务逻辑。
+10. 如果需要长期运行，请按该服务器习惯配置守护方式（systemd / pm2 / supervisor），但不要修改核心业务逻辑。
 
-9. 如果部署失败，请输出：
+11. 如果部署失败，请输出：
    - 失败步骤
    - 错误日志
    - 当前缺失的依赖
+   - 当前缺失的环境变量
    - 下一步修复建议
 ```
 
