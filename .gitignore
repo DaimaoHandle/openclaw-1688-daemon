@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.log
+*.lock
+state.json
+daemon.lock
+daemon.log
+daemon.log.*
+.DS_Store

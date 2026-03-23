@@ -1,0 +1,9 @@
+{
+  "name": "kf1688-daemon",
+  "private": true,
+  "version": "0.1.0",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node daemon.js"
+  }
+}
